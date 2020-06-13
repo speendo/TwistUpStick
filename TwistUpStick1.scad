@@ -158,11 +158,11 @@ if (Part == 1) {
 } else if (Part == 6) {
 	cap(diameter, thickness, capPitch, capThreadOffset, capThreadSize, capThreadStarts, capThreadHeight, verticalOffset, threadHorizontalSize, debug = debug);
 } else if (Part == 7) {
-	mold1(diameter, height, thickness, pitch, threadGrooveWidth, verticalOffset, threadOffset, moldThreadHeight, moldHandleWidth, moldHandleThickness, debug = debug);
+	mold1(diameter, height, thickness, pitch, threadHorizontalSize, threadGrooveWidth, verticalOffset, threadOffset, moldThreadHeight, moldHandleWidth, moldHandleThickness, debug = debug);
 } else if (Part == 8) {
-	mold2(diameter, height, thickness, pitch, threadGrooveWidth, verticalOffset, threadOffset, moldThreadHeight, moldHandleWidth, moldHandleThickness, debug = debug);
+	mold2(diameter, height, thickness, pitch, threadHorizontalSize, threadGrooveWidth, verticalOffset, threadOffset, moldThreadHeight, moldHandleWidth, moldHandleThickness, debug = debug);
 } else if (Part == 9) {
-	moldHolder(diameter, height, thickness, pitch, verticalOffset, threadOffset, moldThreadHeight, debug = debug);
+	moldHolder(diameter, height, thickness, pitch, threadHorizontalSize, verticalOffset, threadOffset, moldThreadHeight, debug = debug);
 }
 
 use<threads.scad>;
@@ -294,22 +294,22 @@ module cap(diameter, thickness, capPitch, capThreadOffset, capThreadSize, capThr
 	}
 }
 
-module mold1(diameter, height, thickness, pitch, threadGrooveWidth, verticalOffset, threadOffset, moldThreadHeight, moldHandleWidth, moldHandleThickness, debug = debug) {
+module mold1(diameter, height, thickness, pitch, threadHorizontalSize, threadGrooveWidth, verticalOffset, threadOffset, moldThreadHeight, moldHandleWidth, moldHandleThickness, debug = debug) {
 	difference() {
-		mold(diameter, height, thickness, pitch, threadGrooveWidth, verticalOffset, threadOffset, moldThreadHeight, moldHandleWidth, moldHandleThickness, debug = debug);
-		moldSeparator(diameter, height, thickness, moldHandleWidth, moldHandleThickness, pitch);
+		mold(diameter, height, thickness, pitch, threadHorizontalSize, threadGrooveWidth, verticalOffset, threadOffset, moldThreadHeight, moldHandleWidth, moldHandleThickness, debug = debug);
+		moldSeparator(diameter, height, thickness, moldHandleWidth, moldHandleThickness, pitch, threadHorizontalSize);
 	}
 }
 
-module mold2(diameter, height, thickness, pitch, threadGrooveWidth, verticalOffset, threadOffset, moldThreadHeight, moldHandleWidth, moldHandleThickness, debug = debug) {
+module mold2(diameter, height, thickness, pitch, threadHorizontalSize, threadGrooveWidth, verticalOffset, threadOffset, moldThreadHeight, moldHandleWidth, moldHandleThickness, debug = debug) {
 	intersection() {
-		mold(diameter, height, thickness, pitch, threadGrooveWidth, verticalOffset, threadOffset, moldThreadHeight, moldHandleWidth, moldHandleThickness, debug = debug);
-		moldSeparator(diameter, height, thickness, moldHandleWidth, moldHandleThickness, pitch);
+		mold(diameter, height, thickness, pitch, threadHorizontalSize, threadGrooveWidth, verticalOffset, threadOffset, moldThreadHeight, moldHandleWidth, moldHandleThickness, debug = debug);
+		moldSeparator(diameter, height, thickness, moldHandleWidth, moldHandleThickness, pitch, threadHorizontalSize);
 	}
 }
 
-module moldSeparator(diameter, height, thickness, moldHandleWidth, moldHandleThickness, pitch) {
-	outerDiameter = diameter + 2*thickness + pitch + 2*max(thickness, pitch);
+module moldSeparator(diameter, height, thickness, moldHandleWidth, moldHandleThickness, pitch, threadHorizontalSize) {
+	outerDiameter = diameter + 2*thickness + threadHorizontalSize + 2*max(thickness, threadHorizontalSize);
 	separatorHeight = height + thickness + moldHandleThickness + thickness + pitch;
 	
 	difference() {
@@ -335,10 +335,10 @@ module moldSeparator(diameter, height, thickness, moldHandleWidth, moldHandleThi
 	}
 }
 
-module mold(diameter, height, thickness, pitch, threadGrooveWidth, verticalOffset, threadOffset, moldThreadHeight, moldHandleWidth, moldHandleThickness, debug = false) {
-	outerDiameter = diameter + 2*thickness + pitch + 2*max(thickness, pitch);
+module mold(diameter, height, thickness, pitch, threadHorizontalSize, threadGrooveWidth, verticalOffset, threadOffset, moldThreadHeight, moldHandleWidth, moldHandleThickness, debug = false) {
+	outerDiameter = diameter + 2*thickness + threadHorizontalSize + 2*max(thickness, threadHorizontalSize);
 	totalHeight = height + thickness + pitch;
-	
+
 	difference() {
 		union() {
 			cylinder(d=outerDiameter, h=totalHeight);
@@ -349,7 +349,7 @@ module mold(diameter, height, thickness, pitch, threadGrooveWidth, verticalOffse
 				rcube([outerDiameter + 2*thickness + moldHandleThickness, outerDiameter + 2*moldHandleWidth, moldHandleThickness], radius = moldHandleThickness/2, center=true, debug=debug);
 			}
 			translate([0,0,totalHeight - moldThreadHeight]) {
-				metric_thread(diameter = outerDiameter + pitch, pitch = pitch, length = moldThreadHeight, n_starts = 2, internal = false, square = false, leadin = 2, leadfac = 0, test = debug);
+				metric_thread(diameter = outerDiameter + threadHorizontalSize, pitch = pitch, thread_size = threadHorizontalSize, length = moldThreadHeight, n_starts = 2, internal = false, square = false, leadin = 2, leadfac = 0, test = debug);
 			}
 		}
 		translate([0,0,-1]) {
@@ -358,13 +358,13 @@ module mold(diameter, height, thickness, pitch, threadGrooveWidth, verticalOffse
 		translate([0,0,totalHeight]) {
 			cylinder(d1=diameter, d2=diameter + 2*thickness + 2*moldHandleThickness + 2, h=thickness + moldHandleThickness + 1);
 		}
-		twistpad(diameter, thickness, pitch, threadGrooveWidth, 0, verticalOffset, threadOffset, debug = true);
+		twistpad(diameter, thickness, pitch, threadHorizontalSize, threadGrooveWidth, 0, verticalOffset, threadOffset, debug = true);
 	}
 }
 
-module moldHolder(diameter, height, thickness, pitch, verticalOffset, threadOffset, moldThreadHeight, debug = debug) {
-	outerDiameter = diameter + 4*thickness + 2*pitch + 2*max(thickness, pitch) + 2*verticalOffset + 2*threadOffset ;
-	innerDiameter = diameter + 2*thickness + pitch + 2*max(thickness, pitch) + 2*verticalOffset;
+module moldHolder(diameter, height, thickness, pitch, threadHorizontalSize, verticalOffset, threadOffset, moldThreadHeight, debug = debug) {
+	outerDiameter = diameter + 4*thickness + 2*threadHorizontalSize + 2*max(thickness, threadHorizontalSize) + 2*verticalOffset + 2*threadOffset ;
+	innerDiameter = diameter + 2*thickness + threadHorizontalSize + 2*max(thickness, threadHorizontalSize) + 2*verticalOffset;
 	totalHeight = height + thickness + pitch;
 
 	difference() {
@@ -373,7 +373,7 @@ module moldHolder(diameter, height, thickness, pitch, verticalOffset, threadOffs
 		}
 		cylinder(d=innerDiameter, h=totalHeight-5);
 		translate([0,0,totalHeight - moldThreadHeight-thickness]) {
-			metric_thread(diameter = innerDiameter + pitch + 2*threadOffset, pitch = pitch, length = moldThreadHeight + thickness, n_starts = 2, internal = true, square = false, leadin = 2, leadfac = 0, test = debug);
+			metric_thread(diameter = innerDiameter + threadHorizontalSize + 2*threadOffset, pitch = pitch, thread_size = threadHorizontalSize, length = moldThreadHeight + thickness, n_starts = 2, internal = true, square = false, leadin = 2, leadfac = 0, test = debug);
 		}
 	}
 }
