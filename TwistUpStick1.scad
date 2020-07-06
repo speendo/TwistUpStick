@@ -13,16 +13,19 @@ Height = 35;
 Volume = 0; // [0:0.1:100000]
 
 /* [ Thread Settings] */
-// in mm
-Pitch = 3;
+// in mm (Pitch = Lead / Thread Starts)
+Lead = 3; // [0:0.1:10]
 // in mm (0 = Pitch)
-Thread_Horizontal_Size = 1.5;
+Thread_Horizontal_Size = 1.5; // [0:0.1:10]
 // in mm
-Thread_Offset = 0.3;
+Thread_Offset = 0.3; // [0:0.01:1]
+
+Thread_Starts = 3; // [2,3,4]
+
 // in mm
-Thread_Groove_Width = 6;
+Thread_Groove_Width = 6; // [0:0.1:20]
 // in mm
-Thread_Groove_Roundness = 1;
+Thread_Groove_Roundness = 1; // [0:0.1:10]
 
 /* [Handle Settings] */
 // in mm
@@ -42,7 +45,7 @@ Handle_Snap_Clearance = 0.2;
 // in mm
 Cap_Pitch = 4;
 // in mm
-Cap_Thread_Size = 1;
+Cap_Thread_Size = 1.0; // [0:0.1:5]
 // in mm
 Cap_Thread_Offset = 0.3;
 // in mm
@@ -74,6 +77,10 @@ Resolution_fn = 100;
 
 /* [Hidden] */
 
+// Calculate pitch
+threadStarts = Thread_Starts;
+pitch = Lead / threadStarts;
+
 // Calculate height and diameter (if not specified)
 
 area1 = Area != 0 ?
@@ -96,11 +103,10 @@ height = Height != 0 ?
 
 threadHorizontalSize = Thread_Horizontal_Size != 0 ?
 	Thread_Horizontal_Size :
-	Pitch;
+	pitch;
 
 // set other values
 debug = Preview;
-pitch = Pitch;
 threadOffset = Thread_Offset;
 threadGrooveWidth = Thread_Groove_Width;
 threadGrooveRoundness = Thread_Groove_Roundness;
@@ -130,13 +136,13 @@ handleDiameter = Handle_Diameter != 0 ?
 
 if (Part == 1) {
 	color("darkred") {
-		twistpad(diameter, thickness, pitch, threadHorizontalSize, threadGrooveWidth, threadGrooveRoundness, verticalOffset, threadOffset, debug = debug);
+		twistpad(diameter, thickness, pitch, threadHorizontalSize, threadStarts, threadGrooveWidth, threadGrooveRoundness, verticalOffset, threadOffset, debug = debug);
 	}
 	color("lightblue") {
 		groovedPipe(diameter, height, thickness, pitch, threadGrooveWidth, threadGrooveOffset, groovedPipeTapering, connectorHeight, connectorOffset, handleSnapShare, handleSnapClearance);
 	}
 	color("lightgreen") {
-		outerPipe(diameter, height, thickness, pitch, threadHorizontalSize, verticalOffset, groovedPipeTapering, capThreadHeight, capPitch, capThreadSize, capThreadStarts, debug = debug);
+		outerPipe(diameter, height, thickness, pitch, threadHorizontalSize, threadStarts, verticalOffset, groovedPipeTapering, capThreadHeight, capPitch, capThreadSize, capThreadStarts, debug = debug);
 	}
 	color("yellow") {
 		handle(handleDiameter, handleHeight, thickness, threadGrooveWidth, threadGrooveOffset, groovedPipeTapering, diameter, connectorHeight, connectorOffset, handleSnapShare, handleSnapClearance);
@@ -148,11 +154,11 @@ if (Part == 1) {
 		}
 	}
 } else if (Part == 2) {
-	twistpad(diameter, thickness, pitch, threadHorizontalSize, threadGrooveWidth, threadGrooveRoundness, verticalOffset, threadOffset, debug = debug);
+	twistpad(diameter, thickness, pitch, threadHorizontalSize, threadStarts, threadGrooveWidth, threadGrooveRoundness, verticalOffset, threadOffset, debug = debug);
 } else if (Part == 3) {
 	groovedPipe(diameter, height, thickness, pitch, threadGrooveWidth, threadGrooveOffset, groovedPipeTapering, connectorHeight, connectorOffset, handleSnapShare, handleSnapClearance);
 } else if (Part == 4) {
-	outerPipe(diameter, height, thickness, pitch, threadHorizontalSize, verticalOffset, groovedPipeTapering, capThreadHeight, capPitch, capThreadSize, capThreadStarts, debug = debug);
+	outerPipe(diameter, height, thickness, pitch, threadHorizontalSize, threadStarts, verticalOffset, groovedPipeTapering, capThreadHeight, capPitch, capThreadSize, capThreadStarts, debug = debug);
 } else if (Part == 5) {
 	handle(handleDiameter, handleHeight, thickness, threadGrooveWidth, threadGrooveOffset, groovedPipeTapering, diameter, connectorHeight, connectorOffset, handleSnapShare, handleSnapClearance);
 } else if (Part == 6) {
@@ -168,16 +174,22 @@ if (Part == 1) {
 use<threads.scad>;
 use<roundcubes.scad>;
 
-module twistpad(diameter, thickness, pitch, threadHorizontalSize, threadGrooveWidth, threadGrooveRoundness, verticalOffset, threadOffset, debug = false) {
+module twistpad(diameter, thickness, pitch, threadHorizontalSize, threadStarts, threadGrooveWidth, threadGrooveRoundness, verticalOffset, threadOffset, debug = debug) {
 	threadDiameter = threadDiameter(diameter, thickness, verticalOffset, threadHorizontalSize, threadOffset);
 	innerDiameter = diameter - 2*verticalOffset;
 	twistpadThickness = pitch;
 	
 	union() {
 		intersection() {
-			metric_thread(diameter = threadDiameter, pitch = pitch, thread_size = threadHorizontalSize, length = twistpadThickness, n_starts = 2, internal = false, square = false, leadin = 0, leadfac = 0, test = debug);
-			translate([0,0,twistpadThickness/2]) {
-				rcube([threadGrooveWidth, threadDiameter, twistpadThickness], true, radius = threadGrooveRoundness, debug = debug, bf = false, tf = false, bb = false, tb = false);
+			translate([0,0,-pitch/2]) {
+				metric_thread(diameter = threadDiameter, pitch = pitch, thread_size = threadHorizontalSize, length = pitch/2 + twistpadThickness, n_starts = threadStarts, internal = false, square = false, leadin = 0, leadfac = 0, test = debug);
+			}
+			for (i = [0:1:threadStarts]) {
+				rotate([0,0,180+i*360/threadStarts]) { // todo: find perfect start rotation
+					translate([-threadGrooveWidth/2,0,0]) {
+						rcube([threadGrooveWidth, threadDiameter/2, twistpadThickness], false, radius = threadGrooveRoundness, debug = debug, fr = false, bf = false, tf = false, bb = false, tb = false);
+					}
+				}
 			}
 		}
 		cylinder(d= innerDiameter, h= twistpadThickness + thickness);
@@ -255,7 +267,7 @@ module handle(handleDiameter, handleHeight, thickness, threadGrooveWidth, thread
 	}
 }
 
-module outerPipe(diameter, height, thickness, pitch, threadHorizontalSize, verticalOffset, groovedPipeTapering, capThreadHeight, capPitch, capThreadSize, capThreadStarts, debug = false) {
+module outerPipe(diameter, height, thickness, pitch, threadHorizontalSize, threadStarts, verticalOffset, groovedPipeTapering, capThreadHeight, capPitch, capThreadSize, capThreadStarts, debug = false) {
 	threadDiameter = threadDiameter(diameter, thickness, verticalOffset, threadHorizontalSize);
 	twistpadThickness = pitch;
 
@@ -272,7 +284,7 @@ module outerPipe(diameter, height, thickness, pitch, threadHorizontalSize, verti
 					metric_thread(diameter = outerThreadDiameter, pitch = capPitch, thread_size = capThreadSize, length = capThreadHeight, internal=false, n_starts=capThreadStarts, square=false, leadin=2, groove=true, test=debug);
 				}
 			}
-			metric_thread(diameter = threadDiameter, pitch = pitch, thread_size = threadHorizontalSize, length = totalGrooveHeight, internal=true, n_starts=2, square=false, leadin=2, test=debug);
+			metric_thread(diameter = threadDiameter, pitch = pitch, thread_size = threadHorizontalSize, length = totalGrooveHeight, internal=true, n_starts=threadStarts, square=false, leadin=2, test=debug);
 		}
 		translate([0,0,-groovedPipeTapering/2]) {
 			difference() {
@@ -284,8 +296,9 @@ module outerPipe(diameter, height, thickness, pitch, threadHorizontalSize, verti
 }
 
 module cap(diameter, thickness, capPitch, capThreadOffset, capThreadSize, capThreadStarts, capHeight, verticalOffset, threadHorizontalSize, debug = debug) {
-	outerPipeDiameter = outerPipeDiameter(diameter, thickness, verticalOffset, threadHorizontalSize);
+	outerPipeDiameter = outerPipeDiameter(diameter, thickness, verticalOffset, threadHorizontalSize) + capThreadSize;
 	capThreadDiameter = outerPipeDiameter + 2*capThreadOffset;
+	
 	outerDiameter = outerPipeDiameter + 2*(capThreadSize+thickness);
 
 	difference() {
@@ -335,7 +348,7 @@ module moldSeparator(diameter, height, thickness, moldHandleWidth, moldHandleThi
 	}
 }
 
-module mold(diameter, height, thickness, pitch, threadHorizontalSize, threadGrooveWidth, verticalOffset, threadOffset, moldThreadHeight, moldHandleWidth, moldHandleThickness, debug = false) {
+module mold(diameter, height, thickness, pitch, threadHorizontalSize, threadStarts, threadGrooveWidth, verticalOffset, threadOffset, moldThreadHeight, moldHandleWidth, moldHandleThickness, debug = false) {
 	outerDiameter = diameter + 2*thickness + threadHorizontalSize + 2*max(thickness, threadHorizontalSize);
 	totalHeight = height + thickness + pitch;
 
@@ -358,7 +371,7 @@ module mold(diameter, height, thickness, pitch, threadHorizontalSize, threadGroo
 		translate([0,0,totalHeight]) {
 			cylinder(d1=diameter, d2=diameter + 2*thickness + 2*moldHandleThickness + 2, h=thickness + moldHandleThickness + 1);
 		}
-		twistpad(diameter, thickness, pitch, threadHorizontalSize, threadGrooveWidth, 0, verticalOffset, threadOffset, debug = true);
+		twistpad(diameter, thickness, pitch, threadHorizontalSize, threadStarts, threadGrooveWidth, threadGrooveRoundness, verticalOffset, threadOffset, debug = true);
 	}
 }
 
@@ -378,7 +391,7 @@ module moldHolder(diameter, height, thickness, pitch, threadHorizontalSize, vert
 	}
 }
 
-function threadDiameter(diameter, thickness, verticalOffset, pitch, threadOffset = 0) = diameter + 2*(thickness + verticalOffset - threadOffset) + pitch;
+function threadDiameter(diameter, thickness, verticalOffset, threadHorizontalSize, threadOffset = 0) = diameter + 2*(thickness + verticalOffset - threadOffset) + threadHorizontalSize;
 function outerPipeDiameter(diameter, thickness, verticalOffset, pitch) = threadDiameter(diameter, thickness, verticalOffset, pitch) + 2* thickness;
 
 function threadAngle(grooveWidth, diameter) = acos((2*pow(diameter/2,2)-pow(grooveWidth,2))/(2*pow(diameter/2,2)));
@@ -386,3 +399,8 @@ function leadinFac(grooveWidth, diameter, share) = threadAngle(grooveWidth, diam
 
 function snapXOffset(connectorOffset, handleSnapShare) = connectorOffset/2*(handleSnapShare);
 function snapZOffset(radius, xPos, handleSnapClearance) = pow(radius,2) > pow(xPos,2) ? sqrt(pow(radius,2) - pow(xPos,2)) + handleSnapClearance : handleSnapClearance;
+
+// Constant from threads.scad
+h_fac1 = 0.875;
+
+function threadTipZ(thread_size) = thread_size / 2 * h_fac1;
